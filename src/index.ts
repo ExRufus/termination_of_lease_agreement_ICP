@@ -34,6 +34,7 @@ const Lease = Record({
   businessOwner: Principal,
   customer: Principal,
   rentalItem: Principal,
+  numberOfItem: nat64,
   startTime: text,
   endTime: text
 });
@@ -41,7 +42,7 @@ const Lease = Record({
 const LeaseError = Variant({
   BusinessOwnerNotFound: Principal,
   CustomerNotFound: Principal,
-  RentalItemNotFound: Principal
+  RentalItemNotFound: Principal,
 });
 
 type LeaseError = typeof LeaseError.tsType
@@ -93,54 +94,78 @@ export default Canister({
   getRentalItem: query([Principal], Opt(RentalItem), (id) => {
     return RentalItems.get(id);
   }),
-  createLease: update([Principal, Principal, Principal, text], Result(Lease, LeaseError), (businessOwnerId, customerId, rentalItemId, endTime) => {
-    // Get business owner
-    const businessOwnerOpt = BusinessOwners.get(businessOwnerId);
-    if ('None' in businessOwnerOpt) {
-        return Err({
+  createLease: update(
+    [Principal, Principal, Principal, nat64, text],
+    Result(Lease, LeaseError),
+    (businessOwnerId, customerId, rentalItemId, numberOfItem, endTime) => {
+      return new Promise((resolve, reject) => {
+        // Get business owner
+        const businessOwnerOpt = BusinessOwners.get(businessOwnerId);
+        if ('None' in businessOwnerOpt) {
+          reject({
             BusinessOwnerNotFound: businessOwnerId
-        });
-    }
-    const businessOwner = businessOwnerOpt.Some;
-
-    // Get customer
-    const customerOpt = Customers.get(customerId);
-    if ('None' in customerOpt) {
-        return Err({
+          });
+          return;
+        }
+        const businessOwner = businessOwnerOpt.Some;
+  
+        // Get customer
+        const customerOpt = Customers.get(customerId);
+        if ('None' in customerOpt) {
+          reject({
             CustomerNotFound: customerId
-        });
-    }
-    const customer = customerOpt.Some;
-
-    // Get rental item
-    const rentalItemOpt = RentalItems.get(rentalItemId);
-    if ('None' in rentalItemOpt) {
-        return Err({
+          });
+          return;
+        }
+        const customer = customerOpt.Some;
+  
+        // Get rental item
+        const rentalItemOpt = RentalItems.get(rentalItemId);
+        if ('None' in rentalItemOpt) {
+          reject({
             RentalItemNotFound: rentalItemId
-        });
+          });
+          return;
+        }
+        let rentalItem = rentalItemOpt.Some;
+  
+        // Reduce the number of items rented
+        rentalItem = {
+          ...rentalItem,
+          quantity: rentalItem.quantity - numberOfItem
+        };
+  
+        // Check that the quantity is not negative
+        if (rentalItem.quantity < 0) {
+          reject({
+            NegativeQuantity: rentalItemId
+          });
+          return;
+        }
+  
+        // Generate ID and start time
+        const id = generateId();
+        const startTime = new Date().toISOString();
+  
+        // Create lease object
+        const lease: Lease = {
+          id,
+          businessOwner: businessOwnerId,
+          customer: customerId,
+          rentalItem: rentalItemId,
+          numberOfItem,
+          startTime,
+          endTime
+        };
+  
+        // Insert lease
+        Leases.insert(id, lease);
+  
+        // Resolve with the lease
+        resolve(Ok(lease));
+      });
     }
-    const rentalItem = rentalItemOpt.Some;
-
-    // Generate ID and start time
-    const id = generateId();
-    const startTime = new Date().toISOString();
-
-    // Create lease object
-    const lease: Lease = {
-        id,
-        businessOwner: businessOwnerId,
-        customer: customerId,
-        rentalItem: rentalItemId,
-        startTime,
-        endTime
-    };
-
-    // Insert lease
-    Leases.insert(id, lease);
-
-    // Return result
-    return Ok(lease);
-}),
+  ),  
   getLeaseId: query([Principal], Opt(Lease), (id) => {
     return Leases.get(id);
   }),

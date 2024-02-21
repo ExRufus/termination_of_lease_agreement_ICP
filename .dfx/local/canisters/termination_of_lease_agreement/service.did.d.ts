@@ -12,7 +12,7 @@ export interface _SERVICE {
     { 'id' : Principal, 'name' : string }
   >,
   'createLease' : ActorMethod<
-    [Principal, Principal, Principal, string],
+    [Principal, Principal, Principal, bigint, string],
     {
         'Ok' : {
           'id' : Principal,
@@ -20,6 +20,7 @@ export interface _SERVICE {
           'businessOwner' : Principal,
           'customer' : Principal,
           'endTime' : string,
+          'numberOfItem' : bigint,
           'rentalItem' : Principal,
         }
       } |
@@ -50,6 +51,7 @@ export interface _SERVICE {
         'businessOwner' : Principal,
         'customer' : Principal,
         'endTime' : string,
+        'numberOfItem' : bigint,
         'rentalItem' : Principal,
       }
     ]

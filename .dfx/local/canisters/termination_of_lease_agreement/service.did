@@ -1,7 +1,7 @@
 service : {
   createBussinessOwner : (text) -> (record { id : principal; name : text });
   createCustomer : (text) -> (record { id : principal; name : text });
-  createLease : (principal, principal, principal, text) -> (
+  createLease : (principal, principal, principal, nat64, text) -> (
       variant {
         Ok : record {
           id : principal;
@@ -9,6 +9,7 @@ service : {
           businessOwner : principal;
           customer : principal;
           endTime : text;
+          numberOfItem : nat64;
           rentalItem : principal;
         };
         Err : variant {
@@ -34,6 +35,7 @@ service : {
         businessOwner : principal;
         customer : principal;
         endTime : text;
+        numberOfItem : nat64;
         rentalItem : principal;
       },
     ) query;

@@ -11,7 +11,7 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'createLease' : IDL.Func(
-        [IDL.Principal, IDL.Principal, IDL.Principal, IDL.Text],
+        [IDL.Principal, IDL.Principal, IDL.Principal, IDL.Nat64, IDL.Text],
         [
           IDL.Variant({
             'Ok' : IDL.Record({
@@ -20,6 +20,7 @@ export const idlFactory = ({ IDL }) => {
               'businessOwner' : IDL.Principal,
               'customer' : IDL.Principal,
               'endTime' : IDL.Text,
+              'numberOfItem' : IDL.Nat64,
               'rentalItem' : IDL.Principal,
             }),
             'Err' : IDL.Variant({
@@ -62,6 +63,7 @@ export const idlFactory = ({ IDL }) => {
               'businessOwner' : IDL.Principal,
               'customer' : IDL.Principal,
               'endTime' : IDL.Text,
+              'numberOfItem' : IDL.Nat64,
               'rentalItem' : IDL.Principal,
             })
           ),

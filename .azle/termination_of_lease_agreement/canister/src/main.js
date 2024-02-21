@@ -7512,9 +7512,6 @@ function Result(ok, err2) {
 function Ok(value) {
   return { Ok: value };
 }
-function Err(value) {
-  return { Err: value };
-}
 
 // node_modules/azle/src/lib/candid/serde/visitors/visit/variant/azle_variant.ts
 function visitAzleVariant(visitor, fields, data) {
@@ -25302,6 +25299,7 @@ var Lease = Record2({
   businessOwner: Principal3,
   customer: Principal3,
   rentalItem: Principal3,
+  numberOfItem: nat64,
   startTime: text,
   endTime: text
 });
@@ -25352,41 +25350,61 @@ var src_default = Canister({
   getRentalItem: query([Principal3], Opt2(RentalItem), (id2) => {
     return RentalItems.get(id2);
   }),
-  createLease: update([Principal3, Principal3, Principal3, text], Result(Lease, LeaseError), (businessOwnerId, customerId, rentalItemId, endTime) => {
-    const businessOwnerOpt = BusinessOwners.get(businessOwnerId);
-    if ("None" in businessOwnerOpt) {
-      return Err({
-        BusinessOwnerNotFound: businessOwnerId
+  createLease: update(
+    [Principal3, Principal3, Principal3, nat64, text],
+    Result(Lease, LeaseError),
+    (businessOwnerId, customerId, rentalItemId, numberOfItem, endTime) => {
+      return new Promise((resolve3, reject2) => {
+        const businessOwnerOpt = BusinessOwners.get(businessOwnerId);
+        if ("None" in businessOwnerOpt) {
+          reject2({
+            BusinessOwnerNotFound: businessOwnerId
+          });
+          return;
+        }
+        const businessOwner = businessOwnerOpt.Some;
+        const customerOpt = Customers.get(customerId);
+        if ("None" in customerOpt) {
+          reject2({
+            CustomerNotFound: customerId
+          });
+          return;
+        }
+        const customer = customerOpt.Some;
+        const rentalItemOpt = RentalItems.get(rentalItemId);
+        if ("None" in rentalItemOpt) {
+          reject2({
+            RentalItemNotFound: rentalItemId
+          });
+          return;
+        }
+        let rentalItem = rentalItemOpt.Some;
+        rentalItem = {
+          ...rentalItem,
+          quantity: rentalItem.quantity - numberOfItem
+        };
+        if (rentalItem.quantity < 0) {
+          reject2({
+            NegativeQuantity: rentalItemId
+          });
+          return;
+        }
+        const id2 = generateId();
+        const startTime = (/* @__PURE__ */ new Date()).toISOString();
+        const lease = {
+          id: id2,
+          businessOwner: businessOwnerId,
+          customer: customerId,
+          rentalItem: rentalItemId,
+          numberOfItem,
+          startTime,
+          endTime
+        };
+        Leases.insert(id2, lease);
+        resolve3(Ok(lease));
       });
     }
-    const businessOwner = businessOwnerOpt.Some;
-    const customerOpt = Customers.get(customerId);
-    if ("None" in customerOpt) {
-      return Err({
-        CustomerNotFound: customerId
-      });
-    }
-    const customer = customerOpt.Some;
-    const rentalItemOpt = RentalItems.get(rentalItemId);
-    if ("None" in rentalItemOpt) {
-      return Err({
-        RentalItemNotFound: rentalItemId
-      });
-    }
-    const rentalItem = rentalItemOpt.Some;
-    const id2 = generateId();
-    const startTime = (/* @__PURE__ */ new Date()).toISOString();
-    const lease = {
-      id: id2,
-      businessOwner: businessOwnerId,
-      customer: customerId,
-      rentalItem: rentalItemId,
-      startTime,
-      endTime
-    };
-    Leases.insert(id2, lease);
-    return Ok(lease);
-  }),
+  ),
   getLeaseId: query([Principal3], Opt2(Lease), (id2) => {
     return Leases.get(id2);
   })
